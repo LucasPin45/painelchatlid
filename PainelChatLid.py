@@ -5,7 +5,7 @@ import time
 
 st.set_page_config(page_title="Painel de Lideranças", layout="wide")
 st.image("https://www.consilliumrig.com.br/wp-content/uploads/2022/07/02_Logotipo_Consillium-1024x218.png", width=300)
-st.title("📂 Lista Completa com Filtros")
+st.title("📂 Líderes da Câmara dos Deputados")
 
 # === DADOS COMPLEMENTARES DE FOTO E PERFIL ===
 dados_complementares = {
