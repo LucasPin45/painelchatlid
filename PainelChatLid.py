@@ -99,8 +99,8 @@ for _, row in df_filtrado.iterrows():
             link_dep = criar_link_whatsapp(row['Celular_Deputado'])
             if link_dep:
                 st.markdown(f"🟢 [WhatsApp Deputado]({link_dep})")
-        if pd.notna(row['Celular_Asessoria']):
-            link_ass = criar_link_whatsapp(row['Celular_Asessoria'])
+        if pd.notna(row['Celular_Assessoria']):
+            link_ass = criar_link_whatsapp(row['Celular_Assessoria'])
             if link_ass:
                 st.markdown(f"💬 [WhatsApp Assessoria]({link_ass})")
         if pd.notna(row['Nome_assessor']):
