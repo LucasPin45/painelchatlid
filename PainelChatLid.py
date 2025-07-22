@@ -113,8 +113,11 @@ for _, row in df_filtrado.iterrows():
 st.markdown("### 🏢 Tabela de Endereços dos Líderes")
 st.dataframe(df_filtrado[["Nome_Parlamentar", "Representacao", "Partido", "Uf", "Endereco_Gabinete", "Endereco_Lideranca"]])
 
-# === ÁREA DO CHAT ===
-st.markdown("### 🤖 Chat sobre os Líderes - Pergunte diretamente quem é o líder, email, telefone")
+from difflib import get_close_matches
+
+# === ÁREA DO CHAT COM IA ===
+st.markdown("### 🤖 Chat Inteligente - Pergunte sobre líderes, e-mails, celulares, gabinetes...")
+
 if "mensagens" not in st.session_state:
     st.session_state.mensagens = []
 
@@ -122,36 +125,38 @@ for msg in st.session_state.mensagens:
     with st.chat_message(msg["role"]):
         st.markdown(msg["content"])
 
-pergunta = st.chat_input("Pergunte sobre os contatos dos líderes")
+pergunta = st.chat_input("Digite sua pergunta sobre os líderes")
 if pergunta:
     st.session_state.mensagens.append({"role": "user", "content": pergunta})
     termo = unidecode(pergunta.lower())
-    campos_alvo = {
-        "email": "Correio_Eletronico",
-        "telefone": "Telefone",
-        "gabinete": "Endereco_Gabinete",
-        "lideranca": "Endereco_Lideranca",
-        "liderança": "Endereco_Lideranca"
-    }
 
     resposta = ""
-    alvo_especifico = next((campo for campo in campos_alvo if campo in termo), None)
+    nomes_lideres = df["nome_clean"].tolist()
+    partidos = df["partido_clean"].tolist()
+    representacoes = df["rep_clean"].tolist()
 
-    if alvo_especifico:
-        encontrados = df[df["nome_clean"].apply(lambda x: x in termo)]
-        if not encontrados.empty:
-            row = encontrados.iloc[0]
-            resposta = f"{alvo_especifico.title()} de {row['Nome_Parlamentar']}: {row[campos_alvo[alvo_especifico]]}"
+    # Busca por nome, partido ou representação aproximado
+    todas_opcoes = nomes_lideres + partidos + representacoes
+    termo_alvo = get_close_matches(termo, todas_opcoes, n=1, cutoff=0.5)
+    
+    if termo_alvo:
+        filtro = df[(df["nome_clean"] == termo_alvo[0]) | (df["partido_clean"] == termo_alvo[0]) | (df["rep_clean"] == termo_alvo[0])]
+        if not filtro.empty:
+            row = filtro.iloc[0]
+            resposta = f"""
+**{row['Nome_Parlamentar']} ({row['Partido']}/{row['Uf']})** — {row['Representacao']}
+
+📧 Email: {row['Correio_Eletronico']}
+🟢 WhatsApp Deputado: {criar_link_whatsapp(row['Celular_Deputado']) or 'Não disponível'}
+💬 WhatsApp Assessoria: {criar_link_whatsapp(row['Celular_Assessoria']) or 'Não disponível'}
+👤 Assessor(a): {row['Nome_assessor'] or 'Não informado'}
+🏢 Gabinete: {row['Endereco_Gabinete']}
+🏛️ Liderança: {row['Endereco_Lideranca']}
+"""
         else:
-            resposta = "❌ Por favor, mencione o nome do líder para obter essa informação."
+            resposta = "❌ Não consegui encontrar essa liderança. Tente usar nome, partido ou representação."
     else:
-        encontrados = df[df.apply(lambda row: any(t in termo for t in [row["partido_clean"], row["nome_clean"], row["rep_clean"]]), axis=1)]
-        if encontrados.empty:
-            resposta = "❌ Nenhum líder encontrado com esse termo."
-        else:
-            resposta = "\n\n".join([
-                f"**{row['Nome_Parlamentar']} ({row['Partido']}/{row['Uf']})** — {row['Representacao']}\nGabinete: {row['Endereco_Gabinete']}\nLiderança: {row['Endereco_Lideranca']}"
-                for _, row in encontrados.iterrows()
-            ])
+        resposta = "❌ Desculpe, não reconheci o termo. Tente ser mais específico, como o nome do líder ou partido."
+
     st.session_state.mensagens.append({"role": "assistant", "content": resposta})
     st.rerun()
