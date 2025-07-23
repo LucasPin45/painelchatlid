@@ -133,6 +133,17 @@ representacoes = {
     "oposição": "Zucco",
 }
 
+# Mapeamento de federações e líderes
+federacoes = {
+    "psdb": "O PSDB está na Federação PSDB Cidadania, portanto seu líder é o Deputado Adolfo Viana.",
+    "pt": "O PT está na Federação Brasil da Esperança - Fe Brasil, portanto seu líder é o Deputado Lindbergh Farias.",
+    "psol": "O PSOL está na Federação PSOL REDE, portanto a líder é a Deputada Talíria Petrone.",
+    "rede": "A REDE está na Federação PSOL REDE, portanto a líder é a Deputada Talíria Petrone.",
+    "cidadania": "O Cidadania está na Federação PSDB Cidadania, portanto seu líder é o Deputado Adolfo Viana.",
+    "pcdob": "O PCdoB está na Federação Brasil da Esperança - Fe Brasil, portanto seu líder é o Deputado Lindbergh Farias.",
+    "pv": "O PV está na Federação Brasil da Esperança - Fe Brasil, portanto seu líder é o Deputado Lindbergh Farias."
+}
+
 # Interface do chat
 st.markdown("## 🤖 Pergunte diretamente sobre os contatos dos líderes")
 st.markdown("### ℹ️ Você pode perguntar no chat sobre os contatos dos líderes. Ou, se preferir, role a tela para cima para visualizar a lista completa.")
@@ -141,11 +152,19 @@ pergunta = st.text_input("Digite sua pergunta sobre os contatos os líderes:")
 if pergunta:
     pergunta_lower = pergunta.lower()
 
+    # Verifica representações (governo, minoria, etc.)
     resposta_direta = None
     for chave, nome in representacoes.items():
         if chave in pergunta_lower:
             resposta_direta = f"O líder da {chave.capitalize()} é {nome}."
             break
+
+    # Verifica federações (PT, PSDB etc.)
+    if not resposta_direta:
+        for partido, resposta in federacoes.items():
+            if f"líder do {partido}" in pergunta_lower or f"lider do {partido}" in pergunta_lower:
+                resposta_direta = resposta
+                break
 
     if resposta_direta:
         st.markdown(f"**{resposta_direta}**")
