@@ -146,7 +146,7 @@ federacoes = {
 
 # Interface do chat
 st.markdown("## 🤖 Pergunte diretamente sobre os contatos dos líderes")
-st.markdown("### ℹ️ Você pode perguntar no chat sobre os contatos dos líderes. Ou, se preferir, role a tela para cima para visualizar a lista completa.")
+st.markdown("### ℹ️ Você pode perguntar no chat sobre os contatos dos líderes. Ou, se preferir, role a tela para cima para visualizar a lista completa Exemplo: PSDB, PDT, Lindbergh.")
 pergunta = st.text_input("Digite sua pergunta sobre os contatos os líderes:")
 
 if pergunta:
