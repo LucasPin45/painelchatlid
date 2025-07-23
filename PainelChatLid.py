@@ -6,6 +6,8 @@ import time
 st.set_page_config(page_title="Painel de Lideranças", layout="wide")
 st.image("https://www.consilliumrig.com.br/wp-content/uploads/2022/07/02_Logotipo_Consillium-1024x218.png", width=300)
 st.title("📂 Líderes da Câmara dos Deputados")
+st.markdown("#### Esta ferramenta foi desenvolvida para facilitar o acesso rápido aos contatos dos líderes partidários da Câmara dos Deputados, permitindo buscas diretas por meio de perguntas no chat ou consulta detalhada na tabela.")
+
 
 # === DADOS COMPLEMENTARES DE FOTO E PERFIL ===
 dados_complementares = {
