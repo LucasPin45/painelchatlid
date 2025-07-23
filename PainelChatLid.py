@@ -115,48 +115,91 @@ st.dataframe(df_filtrado[["Nome_Parlamentar", "Representacao", "Partido", "Uf", 
 
 from difflib import get_close_matches
 
-# === ÁREA DO CHAT COM IA ===
-st.markdown("### 🤖 Chat Inteligente - Pergunte sobre líderes, e-mails, celulares, gabinetes...")
+# === Chat com IA — Busca Semântica via Embeddings ===
+import streamlit as st
+import torch
+from sentence_transformers import SentenceTransformer, util
 
-if "mensagens" not in st.session_state:
-    st.session_state.mensagens = []
+# Função para carregar dados e embeddings
+@st.cache_data
+def carregar_dados_emb():
+    import pandas as pd
+    with open("embeddings/embeddings.pt", "rb") as f:
+        embeddings = torch.load(f)
+    dados = pd.read_excel("liderancas.xlsx")
+    return embeddings, dados
 
-for msg in st.session_state.mensagens:
-    with st.chat_message(msg["role"]):
-        st.markdown(msg["content"])
+# Função para busca semântica
+def buscar_respostas(pergunta, embeddings, dados, modelo, top_k=5):
+    partidos_conhecidos = dados['Partido'].unique().tolist()
+    representacoes_conhecidas = dados['Representacao'].dropna().unique().tolist()
 
-pergunta = st.chat_input("Digite sua pergunta sobre os líderes")
+    # 1. Verifica se algum partido ou federação está presente na pergunta
+    for partido in partidos_conhecidos + representacoes_conhecidas:
+        if partido.lower() in pergunta.lower():
+            filtro = dados[(dados['Partido'].str.lower() == partido.lower()) |
+                           (dados['Representacao'].str.lower() == partido.lower())]
+            if not filtro.empty:
+                respostas_formatadas = []
+                for idx, row in filtro.iterrows():
+                    texto = row["Texto_Embedding"]
+                    respostas_formatadas.append(f"**Resultado {idx+1}:** {texto}")
+                return respostas_formatadas
+
+    # 2. Caso não encontre partido, faz a busca semântica
+    emb_pergunta = modelo.encode(pergunta, convert_to_tensor=True)
+    similaridades = util.pytorch_cos_sim(emb_pergunta, embeddings)[0]
+    top_resultados = torch.topk(similaridades, k=top_k)
+
+    respostas_formatadas = []
+    for score, idx in zip(top_resultados.values, top_resultados.indices):
+        texto = dados.iloc[idx.item()]["Texto_Embedding"]
+        respostas_formatadas.append(f"**Resultado {idx.item()+1}:** {texto}")
+    return respostas_formatadas
+
+
+# Carregamento de dados
+modelo = SentenceTransformer('paraphrase-multilingual-MiniLM-L12-v2')
+embeddings, dados = carregar_dados_emb()
+
+# Interface do chat IA
+st.markdown("## 🧠 Chat sobre os líderes na Câmara")
+
+pergunta = st.text_input("Digite sua pergunta sobre o contato dos líderes:")
+
 if pergunta:
-    st.session_state.mensagens.append({"role": "user", "content": pergunta})
-    termo = unidecode(pergunta.lower())
+    # Mapeamento direto por representações especiais
+    representacoes_chave = {
+        "governo": "Governo na Câmara",
+        "oposição": "Oposição na Câmara",
+        "minoria": "Minoria na Câmara",
+        "maioria": "Maioria na Câmara"
+    }
 
-    resposta = ""
-    nomes_lideres = df["nome_clean"].tolist()
-    partidos = df["partido_clean"].tolist()
-    representacoes = df["rep_clean"].tolist()
+    pergunta_lower = pergunta.lower()
+    resposta_direta = None
 
-    # Busca por nome, partido ou representação aproximado
-    todas_opcoes = nomes_lideres + partidos + representacoes
-    termo_alvo = get_close_matches(termo, todas_opcoes, n=1, cutoff=0.5)
-    
-    if termo_alvo:
-        filtro = df[(df["nome_clean"] == termo_alvo[0]) | (df["partido_clean"] == termo_alvo[0]) | (df["rep_clean"] == termo_alvo[0])]
-        if not filtro.empty:
-            row = filtro.iloc[0]
-            resposta = f"""
-**{row['Nome_Parlamentar']} ({row['Partido']}/{row['Uf']})** — {row['Representacao']}
+    for chave, representacao in representacoes_chave.items():
+        if f"líder do {chave}" in pergunta_lower or f"líder da {chave}" in pergunta_lower:
+            filtro = dados[dados["Representacao"] == representacao]
+            if not filtro.empty:
+                nome_lider = filtro.iloc[0]["Nome_Parlamentar"]
+                resposta_direta = f"O líder da {representacao} é {nome_lider}."
+            else:
+                resposta_direta = f"Não foi possível localizar o líder da {representacao}."
+            break
 
-📧 Email: {row['Correio_Eletronico']}
-🟢 WhatsApp Deputado: {criar_link_whatsapp(row['Celular_Deputado']) or 'Não disponível'}
-💬 WhatsApp Assessoria: {criar_link_whatsapp(row['Celular_Assessoria']) or 'Não disponível'}
-👤 Assessor(a): {row['Nome_assessor'] or 'Não informado'}
-🏢 Gabinete: {row['Endereco_Gabinete']}
-🏛️ Liderança: {row['Endereco_Lideranca']}
-"""
-        else:
-            resposta = "❌ Não consegui encontrar essa liderança. Tente usar nome, partido ou representação."
+    if resposta_direta:
+        st.markdown(f"**{resposta_direta}**")
     else:
-        resposta = "❌ Desculpe, não reconheci o termo. Tente ser mais específico, como o nome do líder ou partido."
+        with st.spinner("Buscando informações..."):
+            respostas = buscar_respostas(pergunta, embeddings, dados, modelo)
+            for r in respostas:
+                st.markdown("----")
+                st.markdown(r)
 
-    st.session_state.mensagens.append({"role": "assistant", "content": resposta})
-    st.rerun()
+
+
+
+
+
