@@ -110,7 +110,8 @@ for _, row in df_filtrado.iterrows():
         st.markdown("---")
 
 # Tabela com endereços
-st.markdown("### 🏢 Tabela de Endereços dos Líderes")
+st.markdown("## 🏢 Tabela de Endereços dos Líderes")
+st.markdown("### 📋 Lista completa de líderes partidários na Câmara dos Deputados, com informações de contato e localização dos gabinetes.")
 st.dataframe(df_filtrado[["Nome_Parlamentar", "Representacao", "Partido", "Uf", "Endereco_Gabinete", "Endereco_Lideranca"]])
 
 from difflib import get_close_matches
@@ -131,8 +132,9 @@ representacoes = {
 }
 
 # Interface do chat
-st.markdown("## 🤖 Painel Inteligente dos Líderes da Câmara")
-pergunta = st.text_input("Digite sua pergunta sobre os líderes:")
+st.markdown("## 🤖 Pergunte diretamente sobre os contatos dos líderes")
+st.markdown("### ℹ️ Você pode perguntar no chat sobre os contatos dos líderes. Ou, se preferir, role a tela para cima para visualizar a lista completa.")
+pergunta = st.text_input("Digite sua pergunta sobre os contatos os líderes:")
 
 if pergunta:
     pergunta_lower = pergunta.lower()
