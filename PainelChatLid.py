@@ -117,86 +117,42 @@ from difflib import get_close_matches
 
 # === Chat com IA — Busca Semântica via Embeddings ===
 import streamlit as st
-import torch
-from sentence_transformers import SentenceTransformer, util
+import pandas as pd
 
-# Função para carregar dados e embeddings
-@st.cache_data
-def carregar_dados_emb():
-    import pandas as pd
-    with open("embeddings/embeddings.pt", "rb") as f:
-        embeddings = torch.load(f)
-    dados = pd.read_excel("liderancas.xlsx")
-    return embeddings, dados
+# Carrega a base com os líderes
+dados = pd.read_excel("liderancas.xlsx")
 
-# Função para busca semântica
-def buscar_respostas(pergunta, embeddings, dados, modelo, top_k=5):
-    partidos_conhecidos = dados['Partido'].unique().tolist()
-    representacoes_conhecidas = dados['Representacao'].dropna().unique().tolist()
+# Mapeamento de representações
+representacoes = {
+    "governo": "José Guimarães",
+    "maioria": "Arlindo Chinaglia",
+    "minoria": "Caroline de Toni",
+    "oposição": "Zucco",
+}
 
-    # 1. Verifica se algum partido ou federação está presente na pergunta
-    for partido in partidos_conhecidos + representacoes_conhecidas:
-        if partido.lower() in pergunta.lower():
-            filtro = dados[(dados['Partido'].str.lower() == partido.lower()) |
-                           (dados['Representacao'].str.lower() == partido.lower())]
-            if not filtro.empty:
-                respostas_formatadas = []
-                for idx, row in filtro.iterrows():
-                    texto = row["Texto_Embedding"]
-                    respostas_formatadas.append(f"**Resultado {idx+1}:** {texto}")
-                return respostas_formatadas
-
-    # 2. Caso não encontre partido, faz a busca semântica
-    emb_pergunta = modelo.encode(pergunta, convert_to_tensor=True)
-    similaridades = util.pytorch_cos_sim(emb_pergunta, embeddings)[0]
-    top_resultados = torch.topk(similaridades, k=top_k)
-
-    respostas_formatadas = []
-    for score, idx in zip(top_resultados.values, top_resultados.indices):
-        texto = dados.iloc[idx.item()]["Texto_Embedding"]
-        respostas_formatadas.append(f"**Resultado {idx.item()+1}:** {texto}")
-    return respostas_formatadas
-
-
-# Carregamento de dados
-modelo = SentenceTransformer('paraphrase-multilingual-MiniLM-L12-v2')
-embeddings, dados = carregar_dados_emb()
-
-# Interface do chat IA
-st.markdown("## 🧠 Chat sobre os líderes na Câmara")
-
-pergunta = st.text_input("Digite sua pergunta sobre o contato dos líderes:")
+# Interface do chat
+st.markdown("## 🤖 Painel Inteligente dos Líderes da Câmara")
+pergunta = st.text_input("Digite sua pergunta sobre os líderes:")
 
 if pergunta:
-    # Mapeamento direto por representações especiais
-    representacoes_chave = {
-        "governo": "Governo na Câmara",
-        "oposição": "Oposição na Câmara",
-        "minoria": "Minoria na Câmara",
-        "maioria": "Maioria na Câmara"
-    }
-
     pergunta_lower = pergunta.lower()
-    resposta_direta = None
 
-    for chave, representacao in representacoes_chave.items():
-        if f"líder do {chave}" in pergunta_lower or f"líder da {chave}" in pergunta_lower:
-            filtro = dados[dados["Representacao"] == representacao]
-            if not filtro.empty:
-                nome_lider = filtro.iloc[0]["Nome_Parlamentar"]
-                resposta_direta = f"O líder da {representacao} é {nome_lider}."
-            else:
-                resposta_direta = f"Não foi possível localizar o líder da {representacao}."
+    resposta_direta = None
+    for chave, nome in representacoes.items():
+        if chave in pergunta_lower:
+            resposta_direta = f"O líder da {chave.capitalize()} é {nome}."
             break
 
     if resposta_direta:
         st.markdown(f"**{resposta_direta}**")
     else:
-        with st.spinner("Buscando informações..."):
-            respostas = buscar_respostas(pergunta, embeddings, dados, modelo)
-            for r in respostas:
-                st.markdown("----")
-                st.markdown(r)
+        resultados = dados[dados['Texto_Embedding'].str.lower().str.contains(pergunta_lower, na=False)]
+        if not resultados.empty:
+            for i, row in resultados.iterrows():
+                st.markdown(f"**Resultado {i+1}:** {row['Texto_Embedding']}")
+        else:
+            st.markdown("Nenhuma informação encontrada para essa pergunta.")
+
 
 
 
